@@ -125,3 +125,9 @@ class BuildingBlock:
             return final_args
         except KeyError:
             return {}
+
+    def is_decider(self):
+        """
+            If BuildingBlock is a decider (e.g. max score threshold) return True
+        """
+        return False

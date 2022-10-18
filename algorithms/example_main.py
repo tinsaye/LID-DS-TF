@@ -1,14 +1,24 @@
+"""
+Example execution of LIDS Framework
+"""
+import os
+import sys
+import datetime
 from pprint import pprint
 import sys
 import os
 
-import datetime
+from dataloader.dataloader_factory import dataloader_factory
 
+from dataloader.direction import Direction
+
+
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
 from algorithms.features.impl.int_embedding import IntEmbedding
 from algorithms.decision_engines.stide import Stide
 from algorithms.features.impl.ngram import Ngram
-from algorithms.ids import IDS
 from algorithms.persistance import save_to_mongo
+from algorithms.ids import IDS
 
 from dataloader.dataloader_factory import dataloader_factory
 from dataloader.direction import Direction
@@ -45,18 +55,18 @@ if __name__ == '__main__':
     # now build ngrams from these integers
     ngram = Ngram([int_embedding], thread_aware, ngram_length)
     # finally calculate the STIDE algorithm using these ngrams
-    stide = Stide(ngram, window_length)
-
+    stide = Stide(ngram)
+    # build stream sum of stide results
+    stream_sum = StreamSum(stide, False, WINDOW_LENGTH, False)
+    # decider threshold
+    decider = MaxScoreThreshold(stream_sum)
     ### the IDS
     ids = IDS(data_loader=dataloader,
-            resulting_building_block=stide,
-            create_alarms=True,
-            plot_switch=False)
+              resulting_building_block=decider,
+              create_alarms=True,
+              plot_switch=False)
 
     print("at evaluation:")
-    # threshold
-    ids.determine_threshold()
-
     # detection
     # normal / seriell
     # results = ids.detect().get_results()
@@ -73,8 +83,8 @@ if __name__ == '__main__':
 
     # enrich results with configuration and save to mongoDB
     results['config'] = ids.get_config_tree_links()
-    results['scenario'] = scenario_name
-    results['dataset'] = lid_ds_version
+    results['scenario'] = SCENARIO_NAME
+    results['dataset'] = LID_DS_VERSION
     results['direction'] = dataloader.get_direction_string()
     results['date'] = str(datetime.datetime.now().date())
 
