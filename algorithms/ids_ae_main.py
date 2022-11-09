@@ -1,25 +1,23 @@
 import os
 import sys
+from datetime import datetime
+
 
 from pprint import pprint
 
-from datetime import datetime
-
-from algorithms.features.impl.syscall_name import SyscallName
-from algorithms.features.impl.int_embedding import IntEmbedding
-from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
+from dataloader.direction import Direction
+from dataloader.dataloader_factory import dataloader_factory
 
 from algorithms.ids import IDS
+
+from algorithms.decision_engines.ae import AE
+from algorithms.features.impl.ngram import Ngram
+from algorithms.features.impl.syscall_name import SyscallName
+from algorithms.features.impl.one_hot_encoding import OneHotEncoding
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
+
 from algorithms.persistance import save_to_mongo
 
-from dataloader.direction import Direction
-
-from algorithms.decision_engines.som import Som
-
-from algorithms.features.impl.ngram import Ngram
-from algorithms.features.impl.w2v_embedding import W2VEmbedding
-
-from dataloader.dataloader_factory import dataloader_factory
 
 if __name__ == '__main__':
 
@@ -49,12 +47,8 @@ if __name__ == '__main__':
     ]
     SCENARIO_RANGE = SCENARIOS[0:1] 
 
-
     # feature config:
     NGRAM_LENGTH = 7
-    W2V_SIZE = 5
-    SOM_EPOCHS = 100
-    SOM_SIZE = 50
     THREAD_AWARE = True
 
     # getting the LID-DS base path from argument or environment variable
@@ -72,48 +66,46 @@ if __name__ == '__main__':
         scenario_path = os.path.join(LID_DS_BASE_PATH,
                                      LID_DS_VERSION[LID_DS_VERSION_NUMBER],
                                      scenario_name)
-        dataloader = dataloader_factory(scenario_path, direction=Direction.OPEN)
+
+        dataloader = dataloader_factory(scenario_path, direction=Direction.BOTH)
 
         # features
         ###################
-        syscallName = SyscallName()
-        intEmbedding = IntEmbedding(syscallName)
-        
-        w2v = W2VEmbedding(word=intEmbedding,
-                           vector_size=W2V_SIZE,
-                           window_size=NGRAM_LENGTH,
-                           epochs=50
-                           )
-        ngram = Ngram([w2v], THREAD_AWARE, NGRAM_LENGTH)
-        som = Som(ngram, epochs=SOM_EPOCHS, size=SOM_SIZE)
-        decider = MaxScoreThreshold(som)
-
+        name = SyscallName()
+        ohe = OneHotEncoding(name)
+        ngram = Ngram(feature_list=[ohe],
+                        thread_aware=THREAD_AWARE,
+                        ngram_length=NGRAM_LENGTH
+                        )
+        # pytorch impl.
+        ae = AE(
+            input_vector=ngram
+        )
+        decider = MaxScoreThreshold(ae)
         ###################
         # the IDS
         ids = IDS(data_loader=dataloader,
-                  resulting_building_block=decider,
-                  create_alarms=False,
-                  plot_switch=False)
+                    resulting_building_block=decider,
+                    create_alarms=False,
+                    plot_switch=False)
 
         print("at evaluation:")
         # detection
-        results = ids.detect_parallel().get_results()
+        # performance = ids.detect_parallel()
+        performance = ids.detect()
+        results = performance.get_results() 
+        
         pprint(results)
+        ids.draw_plot()
+        
 
-        # enrich results with configuration and save to mongoDB
+        # enrich results with configuration and save to disk
         results['config'] = ids.get_config_tree_links()
-<<<<<<< HEAD
-        results['scenario'] = scenario_range[scenario_number]
-        results['dataset'] = lid_ds_version[lid_ds_version_number]
-=======
-        results['scenario'] = scenario_name 
-        results['ngram_length'] = NGRAM_LENGTH
-        results['thread_aware'] = THREAD_AWARE
-        results['w2v_size'] = W2V_SIZE
         results['dataset'] = LID_DS_VERSION[LID_DS_VERSION_NUMBER]
->>>>>>> 125370c (update ids, found error in ids_get_config_tree)
         results['direction'] = dataloader.get_direction_string()
         results['date'] = str(datetime.now().date())
-        result_path = 'results/results_som.json'
+        results['scenario'] = scenario_name
+        results['ngram_length'] = NGRAM_LENGTH
+        results['thread_aware'] = THREAD_AWARE
 
         save_to_mongo(results)

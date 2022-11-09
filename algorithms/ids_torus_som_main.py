@@ -2,24 +2,21 @@ import os
 import sys
 
 from pprint import pprint
-
 from datetime import datetime
 
-from algorithms.features.impl.syscall_name import SyscallName
-from algorithms.features.impl.int_embedding import IntEmbedding
-from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
+from dataloader.direction import Direction
+from dataloader.dataloader_factory import dataloader_factory
 
 from algorithms.ids import IDS
-from algorithms.persistance import save_to_mongo
-
-from dataloader.direction import Direction
-
-from algorithms.decision_engines.som import Som
 
 from algorithms.features.impl.ngram import Ngram
+from algorithms.decision_engines.torus_som import TorusSom
+from algorithms.features.impl.syscall_name import SyscallName
 from algorithms.features.impl.w2v_embedding import W2VEmbedding
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
 
-from dataloader.dataloader_factory import dataloader_factory
+from algorithms.persistance import save_to_mongo
+
 
 if __name__ == '__main__':
 
@@ -49,13 +46,16 @@ if __name__ == '__main__':
     ]
     SCENARIO_RANGE = SCENARIOS[0:1] 
 
-
+    ###################
     # feature config:
     NGRAM_LENGTH = 7
     W2V_SIZE = 5
-    SOM_EPOCHS = 100
-    SOM_SIZE = 50
+    SOM_TFAC = 100
+    SOM_TSCALE = 10
+    SOM_SIZE = 98
     THREAD_AWARE = True
+
+
 
     # getting the LID-DS base path from argument or environment variable
     if len(sys.argv) > 1:
@@ -72,21 +72,19 @@ if __name__ == '__main__':
         scenario_path = os.path.join(LID_DS_BASE_PATH,
                                      LID_DS_VERSION[LID_DS_VERSION_NUMBER],
                                      scenario_name)
+
         dataloader = dataloader_factory(scenario_path, direction=Direction.OPEN)
 
         # features
         ###################
-        syscallName = SyscallName()
-        intEmbedding = IntEmbedding(syscallName)
-        
-        w2v = W2VEmbedding(word=intEmbedding,
+        name = SyscallName()
+        w2v = W2VEmbedding(word=name,
+                           epochs=500,
                            vector_size=W2V_SIZE,
-                           window_size=NGRAM_LENGTH,
-                           epochs=50
-                           )
+                           window_size=NGRAM_LENGTH)
         ngram = Ngram([w2v], THREAD_AWARE, NGRAM_LENGTH)
-        som = Som(ngram, epochs=SOM_EPOCHS, size=SOM_SIZE)
-        decider = MaxScoreThreshold(som)
+        torus_som = TorusSom(ngram, tfac=SOM_TFAC, tscale=SOM_TSCALE, size=SOM_SIZE)
+        decider = MaxScoreThreshold(torus_som)
 
         ###################
         # the IDS
@@ -97,23 +95,16 @@ if __name__ == '__main__':
 
         print("at evaluation:")
         # detection
-        results = ids.detect_parallel().get_results()
+        ids.detect_parallel()
+
+        results = ids.performance.get_results()
         pprint(results)
 
-        # enrich results with configuration and save to mongoDB
+        # enrich results with configuration and save to disk
         results['config'] = ids.get_config_tree_links()
-<<<<<<< HEAD
-        results['scenario'] = scenario_range[scenario_number]
-        results['dataset'] = lid_ds_version[lid_ds_version_number]
-=======
-        results['scenario'] = scenario_name 
-        results['ngram_length'] = NGRAM_LENGTH
-        results['thread_aware'] = THREAD_AWARE
-        results['w2v_size'] = W2V_SIZE
         results['dataset'] = LID_DS_VERSION[LID_DS_VERSION_NUMBER]
->>>>>>> 125370c (update ids, found error in ids_get_config_tree)
         results['direction'] = dataloader.get_direction_string()
         results['date'] = str(datetime.now().date())
-        result_path = 'results/results_som.json'
+        results['scenario'] = scenario_name 
 
         save_to_mongo(results)

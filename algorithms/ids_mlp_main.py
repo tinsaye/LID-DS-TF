@@ -1,25 +1,28 @@
 import os
 import sys
-
-from pprint import pprint
+import torch
 
 from datetime import datetime
 
-from algorithms.features.impl.syscall_name import SyscallName
-from algorithms.features.impl.int_embedding import IntEmbedding
-from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
+from pprint import pprint
 
 from algorithms.ids import IDS
-from algorithms.persistance import save_to_mongo
 
 from dataloader.direction import Direction
 
-from algorithms.decision_engines.som import Som
+from algorithms.decision_engines.mlp import MLP
 
 from algorithms.features.impl.ngram import Ngram
+from algorithms.features.impl.select import Select
 from algorithms.features.impl.w2v_embedding import W2VEmbedding
+from algorithms.features.impl.int_embedding import IntEmbedding
+from algorithms.features.impl.syscall_name import SyscallName
+from algorithms.features.impl.one_hot_encoding import OneHotEncoding
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
 
 from dataloader.dataloader_factory import dataloader_factory
+
+from algorithms.persistance import save_to_mongo
 
 if __name__ == '__main__':
 
@@ -48,14 +51,17 @@ if __name__ == '__main__':
       "CVE-2017-12635_6"
     ]
     SCENARIO_RANGE = SCENARIOS[0:1] 
-
-
+    ###################
     # feature config:
     NGRAM_LENGTH = 7
     W2V_SIZE = 5
-    SOM_EPOCHS = 100
-    SOM_SIZE = 50
     THREAD_AWARE = True
+    HIDDEN_SIZE = 150
+    HIDDEN_LAYERS = 4
+    BATCH_SIZE = 50
+
+    # run config
+    ###################
 
     # getting the LID-DS base path from argument or environment variable
     if len(sys.argv) > 1:
@@ -72,7 +78,7 @@ if __name__ == '__main__':
         scenario_path = os.path.join(LID_DS_BASE_PATH,
                                      LID_DS_VERSION[LID_DS_VERSION_NUMBER],
                                      scenario_name)
-        dataloader = dataloader_factory(scenario_path, direction=Direction.OPEN)
+        dataloader = dataloader_factory(scenario_path, direction=Direction.BOTH)
 
         # features
         ###################
@@ -82,11 +88,29 @@ if __name__ == '__main__':
         w2v = W2VEmbedding(word=intEmbedding,
                            vector_size=W2V_SIZE,
                            window_size=NGRAM_LENGTH,
-                           epochs=50
+                           epochs=50          
                            )
-        ngram = Ngram([w2v], THREAD_AWARE, NGRAM_LENGTH)
-        som = Som(ngram, epochs=SOM_EPOCHS, size=SOM_SIZE)
-        decider = MaxScoreThreshold(som)
+        ngram = Ngram(feature_list=[w2v],
+                      thread_aware=THREAD_AWARE,
+                      ngram_length=NGRAM_LENGTH + 1
+                      )
+        
+        select = Select(ngram, start = 0, end = NGRAM_LENGTH * W2V_SIZE)
+
+        ohe = OneHotEncoding(intEmbedding)
+
+        mlp = MLP(
+            input_vector=select,
+            output_label=ohe,
+            hidden_size=HIDDEN_SIZE,
+            hidden_layers=HIDDEN_LAYERS,
+            batch_size=BATCH_SIZE,
+            learning_rate=0.003
+        )
+
+        decider = MaxScoreThreshold(mlp)
+        # Seeding
+        torch.manual_seed(0)
 
         ###################
         # the IDS
@@ -96,24 +120,23 @@ if __name__ == '__main__':
                   plot_switch=False)
 
         print("at evaluation:")
-        # detection
-        results = ids.detect_parallel().get_results()
+        # threshold
+        ids.determine_threshold()
+        # detection        
+        # print results
+        results = ids.detect().get_results()
         pprint(results)
 
-        # enrich results with configuration and save to mongoDB
+        # enrich results with configuration and save to disk
         results['config'] = ids.get_config_tree_links()
-<<<<<<< HEAD
-        results['scenario'] = scenario_range[scenario_number]
-        results['dataset'] = lid_ds_version[lid_ds_version_number]
-=======
-        results['scenario'] = scenario_name 
-        results['ngram_length'] = NGRAM_LENGTH
-        results['thread_aware'] = THREAD_AWARE
-        results['w2v_size'] = W2V_SIZE
         results['dataset'] = LID_DS_VERSION[LID_DS_VERSION_NUMBER]
->>>>>>> 125370c (update ids, found error in ids_get_config_tree)
         results['direction'] = dataloader.get_direction_string()
         results['date'] = str(datetime.now().date())
-        result_path = 'results/results_som.json'
+        results['scenario'] = scenario_name
+        results['ngram_length'] = NGRAM_LENGTH
+        results['w2v_size'] = W2V_SIZE
+        results['thread_aware'] = THREAD_AWARE
+        results['scenario'] = scenario_name 
 
+        print(mlp.get_net_weights())
         save_to_mongo(results)
