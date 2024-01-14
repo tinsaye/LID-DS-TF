@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import torch
 from dataloader.direction import Direction
@@ -11,7 +12,7 @@ direction = Direction.OPEN
 batch_size = 256
 
 
-def parse_args():
+def parser():
     parser = argparse.ArgumentParser(
         description='Fluctuation Analysis with Transformer\n '
                     'Prepare data, train model, and cache anomaly scores and losses.'
@@ -64,11 +65,15 @@ def parse_args():
         '-do', dest='dropout', action='store', type=float, required=False,
         help='Dropout'
     )
-    return parser.parse_args()
+    parser.add_argument(
+        '-run', dest='run', action='store', type=float, required=False,
+        help='Repeated run number'
+    )
+    return parser
 
 
 def main():
-    args = parse_args()
+    args = parser().parse_args()
     print(args)
     dataset_base = args.base_path
     dataset = args.dataset
@@ -85,6 +90,7 @@ def main():
         num_heads = args.num_heads
         custom_split = args.custom_split
         dropout = args.dropout
+        run = args.run
         if not torch.cuda.is_available():
             print(
                 f"CUDA NOT AVAILABLE redo: "
@@ -95,7 +101,13 @@ def main():
         NGS = ngram_sets(scenario_ngs)
         syscall_dict, _ = scenario_ngs.syscall_dict
 
-        torch.manual_seed(42)
+        if run == 0:
+            torch.manual_seed(42)
+        else:
+            checkpoint_dir = os.path.join(checkpoint_dir, f"run_{run}")
+
+        seed_used = torch.initial_seed()
+        print(f"seed used: {seed_used}")
         model_tf = train_tf_model(
             scenario,
             dataset,
