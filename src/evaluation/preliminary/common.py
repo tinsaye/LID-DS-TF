@@ -1,3 +1,4 @@
+""" Configurations and common functions """
 import matplotlib.pyplot as plt
 import proplot as pplt
 

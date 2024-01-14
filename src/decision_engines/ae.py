@@ -1,3 +1,10 @@
+"""
+Modified version of the Autoencoder Building block from LID-DS.
+Main changes are
+    - possibility to train without early stopping
+    - model checkpoints to allow caching
+    - Fixed a bug where the old implementation always trained for the MAX epochs instead of using early stopping
+"""
 import math
 import time
 from enum import Enum
@@ -263,7 +270,6 @@ class AE(BuildingBlock):
                     stop_early = True
 
                 # print epoch results
-                # {self._max_training_time - duration:.1f}|
                 bar.set_description(
                     f"fit AE: {epoch_counter}|{epochs_since_last_best}/{self._early_stopping_num_epochs}|{best_avg_val_loss:.5f}".rjust(
                         27

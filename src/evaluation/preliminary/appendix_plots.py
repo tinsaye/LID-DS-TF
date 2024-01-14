@@ -35,7 +35,6 @@ def _picked(collection_name,
         ncols=3,
         refwidth=2.7,
         refheight=2,
-        # sharey=True,
         sharey=False,
         sharex=True,
         innerpad=0.4,
@@ -91,20 +90,12 @@ def _picked(collection_name,
         max_loss = max(max(train_losses), max(val_losses))
         axs[idx1].set_ylim([min_loss - min_loss * 0.05, max_loss])
         axs[idx1].set_yticks([min_loss, max_loss])
-        # axs[idx1].set_ylim([0,1])
-        # axs[idx1].set_yticks([0, 1])
         axs[idx1].yaxis.grid(which="both")
         axs[idx1].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         axs[idx1].format(
             title=f"{dataset_short[dataset]}-{scenario_short[scenario]} h{heads} l{layers} m{dim} n{ngram}",
             titleloc='ur'
         )
-        # axs[idx1].set_ylabel("Loss")
-        # axs[idx1].set_yticks([loss_min_y, loss_max_y])
-        # axs[idx1].set_ylim([loss_min_y, loss_max_y * 1.05])
-        # if idx != 0:
-        #     axs[idx1].set_yticklabels([])
-
         ln1 = axs[idx2].plot(
             epochs_x,
             detection_rates,
@@ -118,17 +109,13 @@ def _picked(collection_name,
         axs[idx2].set_xlim([0, max(epochs_x)])
         axs[idx2].set_ylim([0, max(ths) * 1.05])
         axs[idx2].set_yticks([0, max(ths)])
-        # if idx != 0:
-        #     axs[idx2].set_yticklabels([])
         axs[idx2].yaxis.grid(which="both")
-        # axs[idx2].set_ylabel("DR / THR")
         ax12 = axs[idx2].twinx()
         ln12 = ax12.plot(
             epochs_x,
             false_positives,
             **FP,
         )
-        # ax12.set_ylim([0, max(max(false_positives), 1) * 1.05])
         max_fp = max(max(false_positives), max_fp)
         ax12.set_ylim([0, max(max(false_positives), 1) * 1.05])
         ax12.set_ylim([0, max_fp * 1.05])
@@ -142,9 +129,6 @@ def _picked(collection_name,
         ax12.format(
             ylabelpad=-8,
             ylabelsize=12,
-            # abc='A.',
-            # abcloc='ul',
-            # abcweight='bold',
         )
 
         # legend
@@ -157,7 +141,6 @@ def _picked(collection_name,
     axs[5, 0].format(ylabel="DR / THR")
 
     axs.format(
-        # ylabelpad=-10,
         ylabelsize=12,
         xlabelsize=12,
     )
@@ -182,9 +165,7 @@ def _picked(collection_name,
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
     pplt.show()
-    # pplt.close(fig)
     fig.savefig(path, dpi=400, bbox_inches='tight')
-    # plt.savefig(path, dpi=400)
 
     # cache metrics
     with open(f"{file_path}/picked_metrics.pkl", "wb") as f:
@@ -291,7 +272,6 @@ def _picked_rest(collection_name,
 
     axs[-1, :].format(xlabel="Epochs")
     axs.format(
-        # ylabelpad=-10,
         ylabelsize=12,
         xlabelsize=12,
     )
@@ -316,9 +296,7 @@ def _picked_rest(collection_name,
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
     pplt.show()
-    # fig.save(path, dpi=400)
     fig.savefig(path, dpi=400, bbox_inches='tight')
-    # pplt.close(fig)
 
     # cache metrics
     with open(f"{file_path}/picked_metrics.pkl", "wb") as f:
@@ -493,7 +471,6 @@ def _picked_repeated_rest(collection_name,
 
     axs[-1, :].format(xlabel="Epochs")
     axs.format(
-        # ylabelpad=-10,
         ylabelsize=12,
         xlabelsize=12,
     )
@@ -694,7 +671,6 @@ def ae_mlp_epoch_analysis_picked():
         ncols=3,
         refwidth=3,
         refheight=2,
-        # sharey=True,
         sharey=False,
         sharex=True,
         innerpad=0.2
@@ -748,22 +724,15 @@ def ae_mlp_epoch_analysis_picked():
             )
 
             axs[idx1].set_xlim([-1, max(losses_x)])
-            # min_loss = min(min(train_losses), min(val_losses))
-            # min_loss = min_loss if algo == "MLP" else 0
-            # max_loss = max(max(train_losses), max(val_losses))
-            # axs[idx1].set_ylim([min_loss - min_loss * 0.05, max_loss])
-            # axs[idx1].set_yticks([min_loss, max_loss])
             axs[idx1].yaxis.grid(which="both")
             axs[idx1].yaxis.set_major_formatter(FormatStrFormatter('%.0f' if algo == "AE" else '%.2f'))
             axs[idx1].format(
                 title=f"{algo} {dataset_short[dataset]}-{scenario_short[scenario]} n{ngram} d{drop}",
                 titleloc='ur'
             )
-            # axs[idx1].set_ylabel("Loss")
 
             axs[idx1].set_yticks([0, 5] if algo == "AE" else [0.015, 0.05])
             axs[idx1].set_ylim([0, 5] if algo == "AE" else [0.015, 0.052])
-            # axs[idx1].set_ylim([loss_min_y, loss_max_y * 1.05])
             if idx != 0:
                 axs[idx1].set_yticklabels([])
 
@@ -782,12 +751,10 @@ def ae_mlp_epoch_analysis_picked():
             axs[idx2].set_ylim([0, max(ths) * 1.05])
             axs[idx2].set_yticks([0, max(ths)])
             axs[idx2].yaxis.grid(which="both")
-            # axs[idx2].set_ylabel("DR / THR")
             if idx != 0:
                 axs[idx2].set_yticklabels([])
             ax12 = axs[idx2].twinx()
             ln12 = ax12.plot(epochs_x, false_positives, **FP)
-            # ax12.set_ylim([0, max(max(false_positives), 1) * 1.05])
             max_fp = max(max(false_positives), max_fp)
             ax12.set_ylim([0, max(max(false_positives), 1) * 1.05])
             if idx == 2:
@@ -803,7 +770,6 @@ def ae_mlp_epoch_analysis_picked():
 
         idx0 += 2
     title = f"{dataset}"
-    # fig.suptitle(title)
 
     # legend
     axs.format(
@@ -831,18 +797,10 @@ def ae_mlp_epoch_analysis_picked():
     path = f"{file_path}{file_prefix}{title.replace(' ', '_')}{file_suffix}.png"
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-    # fig.tight_layout()
     fig.savefig(path, dpi=400, bbox_inches='tight')
-    # fig.save(path, dpi=400)
 
     pplt.show()
-    # pplt.close(fig)
 
 
 if __name__ == "__main__":
     pre_dedup_picked_with_loss()
-    # dedup_picked_with_loss()
-    # dedup_picked_with_loss_problem()
-    # dedup_picked_rest()
-    # pre_dedup_picked_repeated_rest()
-    # ae_mlp_epoch_analysis_picked()

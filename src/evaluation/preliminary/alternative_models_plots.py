@@ -1,5 +1,4 @@
 """
-
 Plots from the preliminary experiments
 """
 from pathlib import Path
