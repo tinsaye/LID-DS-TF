@@ -3,17 +3,17 @@ from enum import Enum
 from functools import cache
 
 import torch
+from algorithms.building_block import BuildingBlock
+from dataloader.syscall import Syscall
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from algorithms.building_block import BuildingBlock
 from decision_engines.transformer_nn import CustomTransformer
 from src.features.int_embedding import IntEmbeddingConcat
 from utils.checkpoint import ModelCheckPoint
-from dataloader.syscall import Syscall
 
 
 class AnomalyScore(Enum):

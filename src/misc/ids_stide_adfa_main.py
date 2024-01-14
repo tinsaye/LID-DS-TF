@@ -1,17 +1,15 @@
 import os
 import sys
-
 from pprint import pprint
 
-from algorithms.features.impl.int_embedding import IntEmbedding
-from algorithms.ids import IDS
-from algorithms.features.impl.ngram import Ngram
 from algorithms.decision_engines.stide import Stide
+from algorithms.features.impl.int_embedding import IntEmbedding
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
+from algorithms.features.impl.ngram import Ngram
 from algorithms.features.impl.stream_sum import StreamSum
-from dataloader.dataloader_factory import dataloader_factory
-from src.features.max_score_threshold import MaxScoreThreshold
-
+from algorithms.ids import IDS
 from algorithms.persistance import save_to_mongo
+from dataloader.dataloader_factory import dataloader_factory
 
 if __name__ == '__main__':
 
@@ -22,8 +20,10 @@ if __name__ == '__main__':
         try:
             lid_ds_base_path = os.environ['LID_DS_BASE']
         except KeyError:
-            raise ValueError("No LID-DS Base Path given. Please specify as argument or set Environment Variable "
-                             "$LID_DS_BASE")
+            raise ValueError(
+                "No LID-DS Base Path given. Please specify as argument or set Environment Variable "
+                "$LID_DS_BASE"
+            )
 
     kwargs = {'val_count': 20,  # size of validation data set (recordings)
               'attack': None,  # ADFA-LD Attack
@@ -47,10 +47,12 @@ if __name__ == '__main__':
     decider = MaxScoreThreshold(stream_sum)
 
     ### the IDS
-    ids = IDS(data_loader=dataloader,
-              resulting_building_block=decider,
-              create_alarms=True,
-              plot_switch=False)
+    ids = IDS(
+        data_loader=dataloader,
+        resulting_building_block=decider,
+        create_alarms=True,
+        plot_switch=False
+    )
 
     # detection
     # normal / seriell

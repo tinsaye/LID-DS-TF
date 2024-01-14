@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from pprint import pprint
 
+from algorithms.features.impl.max_score_threshold import MaxScoreThreshold
 from algorithms.features.impl.ngram import Ngram
 from algorithms.features.impl.process_name import ProcessName
 from algorithms.features.impl.syscall_name import SyscallName
@@ -16,7 +17,6 @@ from dataloader.direction import Direction
 
 from decision_engines.transformer import Transformer, AnomalyScore
 from src.features.int_embedding import IntEmbeddingConcat
-from src.features.max_score_threshold import MaxScoreThreshold
 from src.features.ngram_minus_one import NgramMinusOne
 from src.features.path_like_param import PathLikeParam
 from src.features.path_preprocessor import PathPreprocessor

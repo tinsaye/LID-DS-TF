@@ -5,10 +5,9 @@ import itertools
 import os
 from typing import Union
 
+from dataloader.direction import Direction
 from pymongo import MongoClient
 from pymongo.collection import Collection
-
-from dataloader.direction import Direction
 
 
 class ResultQuery:
@@ -350,6 +349,7 @@ def match_base(
     return {"$match": match}
 
 
+# noinspection GrazieInspection
 def add_config_values(config_aliases_dict: dict[str, dict]) -> dict:
     """ Construct $addFields stage dictionary for extracting configuration values
 

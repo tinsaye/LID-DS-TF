@@ -2,10 +2,10 @@
 Demonstrates the usage of the experiment result query
 """
 
+from dataloader.direction import Direction
 from tabulate import tabulate
 
 from src.evaluation.experiment_result_queries import ResultQuery
-from dataloader.direction import Direction
 
 
 def find_results_with_specific_config():

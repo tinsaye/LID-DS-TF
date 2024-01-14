@@ -2,12 +2,12 @@
 Custom Transformer based models implementations.  Modified version of the pytorch `nn.Transformer` module.
 """
 import copy
-from typing import Optional, Any
+from typing import Optional
 
 import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 from torch.nn import Module, LayerNorm, MultiheadAttention, Linear, Dropout, ModuleList
+from torch.nn import functional as F
 from torch.nn.init import xavier_uniform_
 
 
@@ -81,7 +81,7 @@ class CustomTransformer(Module):
             - tgt_key_padding_mask: :math:`(N, T)`.
             - memory_key_padding_mask: :math:`(N, S)`.
 
-            Note: [src/tgt/memory]_mask ensures that position i is allowed to attend the unmasked
+            Note: [src/tgt/memory]_mask ensures that position `i` is allowed to attend the unmasked
             positions. If a ByteTensor is provided, the non-zero positions are not allowed to attend
             while the zero positions will be unchanged. If a BoolTensor is provided, positions with ``True``
             are not allowed to attend while ``False`` values will be unchanged. If a FloatTensor
@@ -448,7 +448,7 @@ class TransformerDecoderLayer(Module):
 
 
 def _get_clones(module, N):
-    return ModuleList([copy.deepcopy(module) for i in range(N)])
+    return ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 
 def _get_activation_fn(activation):

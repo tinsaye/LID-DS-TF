@@ -3,7 +3,6 @@ from pathlib import Path
 from statistics import median
 
 import sentencepiece as spm
-
 from algorithms.building_block import BuildingBlock
 from algorithms.persistance import load_from_json
 from dataloader.syscall import Syscall

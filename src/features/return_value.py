@@ -1,6 +1,7 @@
 from algorithms.building_block import BuildingBlock
 from dataloader.syscall import Syscall
 
+
 class ReturnValueWithError(BuildingBlock):
     """
     calculate system call return value for all syscalls.

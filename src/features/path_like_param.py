@@ -31,7 +31,8 @@ class PathLikeParam(BuildingBlock):
             if path is not None:
                 if param in ["fd", "in_fd", "out_fd"]:
                     if "<f>" in path:
-                        result = FileDescriptor.get_fd_part(path, FDMode.Content)
+                        # noinspection PyProtectedMember
+                        result = FileDescriptor._get_fd_part(path, FDMode.Content)
                         return result
                 else:
                     return path,

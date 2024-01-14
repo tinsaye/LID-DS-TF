@@ -1,6 +1,6 @@
+from algorithms.building_block import BuildingBlock
 from dataloader.syscall import Syscall
 
-from algorithms.building_block import BuildingBlock
 
 class IntEmbeddingConcat(BuildingBlock):
     """

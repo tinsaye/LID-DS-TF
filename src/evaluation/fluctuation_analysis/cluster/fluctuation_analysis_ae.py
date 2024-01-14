@@ -1,10 +1,10 @@
 import argparse
 
 import torch
-
-from algorithms.evaluation.fluctuation_analysis.utils import ngram_sets, get_anomaly_scores_for_epochs, \
-    cache_losses, prepare_ae_ngs, train_ae_model
 from dataloader.direction import Direction
+
+from evaluation.fluctuation_analysis.utils import ngram_sets, get_anomaly_scores_for_epochs, \
+    cache_losses, prepare_ae_ngs, train_ae_model
 
 learning_rate = 0.001
 direction = Direction.OPEN

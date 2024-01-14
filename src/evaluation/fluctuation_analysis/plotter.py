@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
-from algorithms.evaluation.fluctuation_analysis.anomaly_scores import AnomalyScores
+from evaluation.fluctuation_analysis.anomaly_scores import AnomalyScores
 
 
 def plot_scores_single_epoch(anos: AnomalyScores, ax: plt.Axes, with_exclusion=False):

@@ -1,16 +1,17 @@
+import math
+import time
 from enum import Enum
 from functools import lru_cache
-import time
+
 import torch
-import torch.utils.data.dataset as td
-import torch.nn.functional as torch_fn
 import torch.nn as nn
+import torch.nn.functional as torch_fn
+import torch.utils.data.dataset as td
+from algorithms.building_block import BuildingBlock
+from dataloader.syscall import Syscall
 from tqdm import tqdm
-import math
 
 from utils.checkpoint import ModelCheckPoint
-from dataloader.syscall import Syscall
-from algorithms.building_block import BuildingBlock
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -25,6 +26,7 @@ class AEDataset(td.Dataset):
     """
     helper class used to present the data to torch
     """
+
     def __init__(self, data: set) -> None:
         super().__init__()
         data_array = []
@@ -39,6 +41,7 @@ class AEDataset(td.Dataset):
         xy = self.xy_data[idx]
         return xy
 
+
 class AENetwork(nn.Module):
     """
     the actual autoencoder as torch module
@@ -48,43 +51,55 @@ class AENetwork(nn.Module):
         super().__init__()
         self._input_size = input_size
         self._factor = 0.7
-        first_hidden_layer_size = self._input_size #int(self._input_size * 1.333)
+        first_hidden_layer_size = self._input_size  # int(self._input_size * 1.333)
         # Building an encoder
         self.encoder = torch.nn.Sequential(
             torch.nn.Linear(self._input_size, first_hidden_layer_size),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
-            torch.nn.Linear(first_hidden_layer_size, int(first_hidden_layer_size * pow(self._factor,2))),
+            torch.nn.Linear(first_hidden_layer_size, int(first_hidden_layer_size * pow(self._factor, 2))),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
-            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor,2)), int(first_hidden_layer_size * pow(self._factor,3))),
+            torch.nn.Linear(
+                int(first_hidden_layer_size * pow(self._factor, 2)),
+                int(first_hidden_layer_size * pow(self._factor, 3))
+            ),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
-            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor,3)), int(first_hidden_layer_size * pow(self._factor,4))),
+            torch.nn.Linear(
+                int(first_hidden_layer_size * pow(self._factor, 3)),
+                int(first_hidden_layer_size * pow(self._factor, 4))
+            ),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU()
         )
 
-        # Building an decoder
+        # Building a decoder
         self.decoder = torch.nn.Sequential(
-            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor,4)), int(first_hidden_layer_size * pow(self._factor,3))),
+            torch.nn.Linear(
+                int(first_hidden_layer_size * pow(self._factor, 4)),
+                int(first_hidden_layer_size * pow(self._factor, 3))
+            ),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
-            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor,3)), int(first_hidden_layer_size * pow(self._factor,2))),
+            torch.nn.Linear(
+                int(first_hidden_layer_size * pow(self._factor, 3)),
+                int(first_hidden_layer_size * pow(self._factor, 2))
+            ),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
-            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor,2)), first_hidden_layer_size),
+            torch.nn.Linear(int(first_hidden_layer_size * pow(self._factor, 2)), first_hidden_layer_size),
             torch.nn.Dropout(p=dropout),
             torch.nn.SELU(),
 
             torch.nn.Linear(first_hidden_layer_size, self._input_size),
             torch.nn.Dropout(p=dropout),
-            #torch.nn.Sigmoid()
+            # torch.nn.Sigmoid()
         )
 
         for m in self.encoder:
@@ -138,7 +153,7 @@ class AE(BuildingBlock):
         self._batch_size = batch_size
         self._training_set = set()
         self._validation_set = set()
-        self._max_training_time = max_training_time # time in seconds
+        self._max_training_time = max_training_time  # time in seconds
         self._early_stopping_num_epochs = early_stopping_epochs
         self._epochs = epochs
         self._dropout = dropout
@@ -148,7 +163,7 @@ class AE(BuildingBlock):
 
         self.train_losses = {}
         self.val_losses = {}
-        self.anomaly_scores = { _: {} for _ in AEMode }
+        self.anomaly_scores = {_: {} for _ in AEMode}
         self._use_early_stopping = use_early_stopping
         self.use_cache = False
         self.eval_after_load = False
@@ -180,7 +195,7 @@ class AE(BuildingBlock):
         self._autoencoder.train()
         self._optimizer = torch.optim.Adam(
             self._autoencoder.parameters(),
-            lr = self._learning_rate,
+            lr=self._learning_rate,
             betas=(0.9, 0.999),
             eps=1e-07,
             amsgrad=False
@@ -199,7 +214,10 @@ class AE(BuildingBlock):
         with tqdm(total=self._max_training_time, unit=" epoch", bar_format="{l_bar}{bar}| {n:0.1f}/{total}s") as bar:
             last_ts = time.time()
             epoch_counter = 0
-            bar.set_description(f"fit AE: {epoch_counter}|{0}/{self._early_stopping_num_epochs}|None".rjust(27), refresh=True)
+            bar.set_description(
+                f"fit AE: {epoch_counter}|{0}/{self._early_stopping_num_epochs}|None".rjust(27),
+                refresh=True
+            )
             while True:
                 epoch_counter += 1
                 for (batch_index, batch) in enumerate(data_loader):
@@ -209,9 +227,9 @@ class AE(BuildingBlock):
                     oupt = self._autoencoder(X)  # compute output
                     loss_value = self._loss_function(oupt, Y)  # compute loss (a tensor)
                     # backward                
-                    self._optimizer.zero_grad()                # prepare gradients
-                    loss_value.backward()                      # compute gradients
-                    self._optimizer.step()                     # update weights
+                    self._optimizer.zero_grad()  # prepare gradients
+                    loss_value.backward()  # compute gradients
+                    self._optimizer.step()  # update weights
 
                 # validation
                 val_loss = 0.0
@@ -246,7 +264,12 @@ class AE(BuildingBlock):
 
                 # print epoch results
                 # {self._max_training_time - duration:.1f}|
-                bar.set_description(f"fit AE: {epoch_counter}|{epochs_since_last_best}/{self._early_stopping_num_epochs}|{best_avg_val_loss:.5f}".rjust(27), refresh=True)
+                bar.set_description(
+                    f"fit AE: {epoch_counter}|{epochs_since_last_best}/{self._early_stopping_num_epochs}|{best_avg_val_loss:.5f}".rjust(
+                        27
+                    ),
+                    refresh=True
+                )
 
                 dts = time.time() - last_ts
                 bar.update(dts)
@@ -261,7 +284,6 @@ class AE(BuildingBlock):
         self._autoencoder.eval()
         self._training_set = set()
         self._validation_set = set()
-
 
     def _fit_without_early_stopping(self):
         self._autoencoder = AENetwork(self._input_size, dropout=self._dropout).to(device)
@@ -424,3 +446,9 @@ class AE(BuildingBlock):
 
     def new_recording(self):
         pass
+
+    def update_config_value(self, key, value):
+        """
+            Updates the value of a config key. Useful when the value is not known at init time.
+        """
+        self.__config[key] = value

@@ -1,6 +1,6 @@
+import numpy as np
 from algorithms.building_block import BuildingBlock
 from dataloader.syscall import Syscall
-import numpy as np
 
 
 class QuantileBucketing(BuildingBlock):

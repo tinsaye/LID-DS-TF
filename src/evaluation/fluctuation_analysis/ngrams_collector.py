@@ -1,5 +1,6 @@
 from algorithms.building_block import BuildingBlock
 
+
 class NgramsCollector(BuildingBlock):
 
     def __init__(self, input_vector: BuildingBlock):
@@ -58,7 +59,6 @@ class NgramsCollector(BuildingBlock):
             self.per_rec_normal[self.current_rec] = self.per_rec_normal.get(self.current_rec, {})
             self.per_rec_normal[self.current_rec][input_vector] = \
                 self.per_rec_normal[self.current_rec].get(input_vector, 0) + 1
-
 
     def before_exploit_on(self, syscall):
         input_vector: tuple = self._input_vector.get_result(syscall)

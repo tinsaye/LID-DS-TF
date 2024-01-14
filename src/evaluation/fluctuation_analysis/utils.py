@@ -2,24 +2,24 @@ import os
 import pickle
 from typing import Iterable
 
+from algorithms.data_preprocessor import DataPreprocessor
+from algorithms.features.impl.ngram import Ngram
+from algorithms.features.impl.one_hot_encoding import OneHotEncoding
+from algorithms.features.impl.syscall_name import SyscallName
+from dataloader.base_data_loader import BaseDataLoader
+from dataloader.dataloader_factory import dataloader_factory
+from dataloader.direction import Direction
 from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from algorithms.data_preprocessor import DataPreprocessor
-from algorithms.decision_engines.ae import AE
-from algorithms.decision_engines.transformer import Transformer, AnomalyScore
-from algorithms.evaluation.fluctuation_analysis.anomaly_scores import AnomalyScores
+from decision_engines.ae import AE
+from decision_engines.transformer import Transformer, AnomalyScore
+from evaluation.fluctuation_analysis.anomaly_scores import AnomalyScores
+from evaluation.fluctuation_analysis.ngs import Ngs
 from src.evaluation.fluctuation_analysis.ngrams_collector import NgramsCollector
-from algorithms.evaluation.fluctuation_analysis.ngs import Ngs
 from src.features.int_embedding import IntEmbeddingConcat
-from algorithms.features.impl.ngram import Ngram
-from algorithms.features.impl.one_hot_encoding import OneHotEncoding
-from algorithms.features.impl.syscall_name import SyscallName
-from algorithms.persistance import ModelCheckPoint
-from dataloader.base_data_loader import BaseDataLoader
-from dataloader.dataloader_factory import dataloader_factory
-from dataloader.direction import Direction
+from utils.checkpoint import ModelCheckPoint
 
 
 def collect_ngrams(ngram_bb: Ngram, scenario_path, direction: Direction, **kwargs) -> NgramsCollector:
@@ -66,9 +66,7 @@ def ngram_sets(collector: NgramsCollector) -> Ngs:
     before_exploit_exc_train = list(set(before_exploit_set) - set(train_set))
     after_exploit_exc_train = list(set(after_exploit_set) - set(train_set))
     train_set_split, val_set_split = train_test_split(
-        list(train_set),
-        test_size=0.2 - len(val_exc_train) / len(train_set),
-        random_state=42
+        list(train_set), test_size=0.2 - len(val_exc_train) / len(train_set), random_state=42
     )
     val_set_split = list(set(val_set_split) | set(val_exc_train))
     all_set = list(set(train_set) | set(val_set) | set(exploit_set) | set(normal_set))
@@ -133,7 +131,7 @@ def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
     anomaly_scores_after_exploit_per_recording = {}
     for name, rec_ng in NGS.per_rec_after.items():
         if len(rec_ng) == 0:
-            anomaly_scores_after_exploit_per_recording[name] = [0]  # TODO: should this be 0
+            anomaly_scores_after_exploit_per_recording[name] = [0]
         for ng in rec_ng:
             score = anomaly_scores_all[ng]
             if name in anomaly_scores_after_exploit_per_recording:
@@ -144,7 +142,7 @@ def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
     anomaly_scores_before_exploit_per_recording = {}
     for name, rec_ng in NGS.per_rec_before.items():
         if len(rec_ng) == 0:
-            anomaly_scores_before_exploit_per_recording[name] = [0]  # TODO: should this be 0
+            anomaly_scores_before_exploit_per_recording[name] = [0]
         for ng in rec_ng:
             score = anomaly_scores_all[ng]
             if name in anomaly_scores_before_exploit_per_recording:
@@ -184,10 +182,10 @@ def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
 def roc_metrics_for_threshold(anos: AnomalyScores):
     threshold = anos.threshold
     num_rec = len(anos.after_exploit_per_recording)
-    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores])
-                                       for _scores in anos.before_exploit_per_recording.values()]
-    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores])
-                                      for _scores in anos.after_exploit_per_recording.values()]
+    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores]) for _scores in
+                                       anos.before_exploit_per_recording.values()]
+    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores]) for _scores in
+                                      anos.after_exploit_per_recording.values()]
 
     fp = sum(is_anomaly_before_per_recording)
     tp = sum(is_anomaly_after_per_recording)
@@ -203,8 +201,9 @@ def roc_metrics_for_threshold(anos: AnomalyScores):
 def roc_metrics_for_epoch(anos: AnomalyScores):
     num_rec = len(anos.before_exploit_per_recording)
     y_true = [0] * num_rec + [1] * num_rec
-    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()] \
-              + [max(scores) for scores in anos.after_exploit_per_recording.values()]
+    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()]
+    y_score += [max(scores) for scores in anos.after_exploit_per_recording.values()]
+
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
     roc_auc = auc(fpr, tpr)
     return thresholds, tpr, fpr, roc_auc
@@ -218,12 +217,12 @@ def anomalies_counts(anos: AnomalyScores, NGS: Ngs):
     normal = [is_anomaly(score) for score in anos.normal]
 
     anomal_ngs_after_exploit = [ng for ng, is_anormal in zip(NGS.after_exploit_set, after_exploit) if is_anormal]
-    return {
-        "before_exploit": sum(before_exploit),
-        "after_exploit": sum(after_exploit),
-        "normal": sum(normal),
-        "anomal_ngs_after_exploit": anomal_ngs_after_exploit,
-    }
+    return dict(
+        before_exploit=sum(before_exploit),
+        after_exploit=sum(after_exploit),
+        normal=sum(normal),
+        anomal_ngs_after_exploit=anomal_ngs_after_exploit
+    )
 
 
 def get_anomaly_scores_for_epochs(_model, epochs, _NGS, _collector, config: Iterable[int], base_path=""):
@@ -316,11 +315,7 @@ def prepare_tf_ngs(dataset_base,
 
     sys_name = SyscallName()
     int_emb = IntEmbeddingConcat([sys_name])
-    ngram = Ngram(
-        feature_list=[int_emb],
-        ngram_length=ngram_length,
-        thread_aware=True,
-    )
+    ngram = Ngram(feature_list=[int_emb], ngram_length=ngram_length, thread_aware=True, )
 
     collector = collect_ngrams(ngram, scenario_path, direction)
     syscall_dict = {v: k for k, v in int_emb._encoding_dict[0].items()}
@@ -360,11 +355,7 @@ def prepare_ae_ngs(dataset_base,
 
     sys_name = SyscallName()
     ohe = OneHotEncoding(sys_name)
-    ngram = Ngram(
-        feature_list=[ohe],
-        ngram_length=ngram_length,
-        thread_aware=True,
-    )
+    ngram = Ngram(feature_list=[ohe], ngram_length=ngram_length, thread_aware=True, )
 
     collector = collect_ngrams(ngram, scenario_path, direction)
     syscall_dict = {v: k for k, v in ohe._input_to_int_dict.items()}
@@ -399,29 +390,27 @@ def train_ae_model(scenario,
                    custom_split,
                    NGS: Ngs,
                    epochs=3000,
-                   base_path=""
-                   ):
+                   base_path=""):
     checkpoint = ModelCheckPoint(
         scenario_name=scenario,
         models_dir=os.path.join(base_path, "models"),
         lid_ds_version_name=dataset,
         algorithm="ae",
-        algo_config={
-            "ngram_length": ngram_length,
-            "dropout": dropout,
-            "learning_rate": learning_rate,
-            "direction": direction,
-            "split": custom_split
-        },
-    )
+        algo_config=dict(
+            ngram_length=ngram_length,
+            dropout=dropout,
+            learning_rate=learning_rate,
+            direction=direction,
+            split=custom_split
+        ), )
+
     model = AE(
         input_vector=None,
         epochs=epochs,
         dropout=dropout,
         use_early_stopping=False,
         checkpoint=checkpoint,
-        learning_rate=learning_rate,
-    )
+        learning_rate=learning_rate, )
     if not custom_split:
         model._training_set = NGS.train_set
         model._validation_set = NGS.val_set
@@ -434,40 +423,37 @@ def train_ae_model(scenario,
     return model
 
 
-def train_tf_model(
-        scenario,
-        dataset,
-        ngram_length,
-        dropout,
-        learning_rate,
-        direction,
-        custom_split,
-        model_dim,
-        batch_size,
-        emb,
-        NGS: Ngs,
-        epochs,
-        num_heads=2,
-        layers=2,
-        base_path=""
-):
+def train_tf_model(scenario,
+                   dataset,
+                   ngram_length,
+                   dropout,
+                   learning_rate,
+                   direction,
+                   custom_split,
+                   model_dim,
+                   batch_size,
+                   emb,
+                   NGS: Ngs,
+                   epochs,
+                   num_heads=2,
+                   layers=2,
+                   base_path=""):
     checkpoint = ModelCheckPoint(
         scenario_name=scenario,
         models_dir=os.path.join(base_path, "models"),
         lid_ds_version_name=dataset,
         algorithm="tf",
-        algo_config={
-            "ngram_length": ngram_length,
-            "dropout": dropout,
-            "model_dim": model_dim,
-            "lr": learning_rate,
-            "direction": direction,
-            "split": custom_split,
-            "batch_size": batch_size,
-            "heads": num_heads,
-            "layers": layers,
-        },
-    )
+        algo_config=dict(
+            ngram_length=ngram_length,
+            dropout=dropout,
+            model_dim=model_dim,
+            lr=learning_rate,
+            direction=direction,
+            split=custom_split,
+            batch_size=batch_size,
+            heads=num_heads,
+            layers=layers
+        ), )
 
     model = Transformer(
         input_vector=None,
@@ -483,7 +469,7 @@ def train_tf_model(
         dedup_train_set=True,
         retrain=False,
         checkpoint=checkpoint,
-        concat_int_embedding=emb,
+        int_embedding=emb,
         learning_rate=learning_rate
     )
 
