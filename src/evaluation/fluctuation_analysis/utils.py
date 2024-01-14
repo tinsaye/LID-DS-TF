@@ -2,6 +2,7 @@ import os
 import pickle
 from typing import Iterable
 
+from algorithms.building_block import BuildingBlock
 from algorithms.data_preprocessor import DataPreprocessor
 from algorithms.features.impl.ngram import Ngram
 from algorithms.features.impl.one_hot_encoding import OneHotEncoding
@@ -180,16 +181,9 @@ def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
 
 
 def roc_metrics_for_threshold(anos: AnomalyScores):
-    threshold = anos.threshold
+    fp, tp = fp_tp_for_threshold(anos)
+
     num_rec = len(anos.after_exploit_per_recording)
-    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores]) for _scores in
-                                       anos.before_exploit_per_recording.values()]
-    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores]) for _scores in
-                                      anos.after_exploit_per_recording.values()]
-
-    fp = sum(is_anomaly_before_per_recording)
-    tp = sum(is_anomaly_after_per_recording)
-
     tn = num_rec - fp
     fn = num_rec - tp
 
@@ -198,12 +192,70 @@ def roc_metrics_for_threshold(anos: AnomalyScores):
     return tpr, fpr
 
 
+def fp_tp_for_threshold(anos: AnomalyScores):
+    threshold = anos.threshold
+    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores])
+                                       for _scores in anos.before_exploit_per_recording.values()]
+    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores])
+                                      for _scores in anos.after_exploit_per_recording.values()]
+
+    fp = sum(is_anomaly_before_per_recording)
+    tp = sum(is_anomaly_after_per_recording)
+
+    return fp, tp
+
+
+def roc_metrics_for_threshold_with_normal(anos: AnomalyScores):
+    threshold = anos.threshold
+    num_rec = len(anos.after_exploit_per_recording)
+    num_norm = len(anos.normal_per_recording)
+    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores])
+                                      for _scores in anos.after_exploit_per_recording.values()]
+    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores])
+                                       for _scores in anos.before_exploit_per_recording.values()]
+    is_anomaly_normal_per_recording = [any([sc > threshold for sc in _scores])
+                                       for _scores in anos.normal_per_recording.values()]
+
+    fp = sum(is_anomaly_before_per_recording) + sum(is_anomaly_normal_per_recording)
+    tp = sum(is_anomaly_after_per_recording)
+
+    tn = num_rec + num_norm - fp
+    fn = num_rec - tp
+
+    tpr = tp / (tp + fn)
+    fpr = fp / (fp + tn)
+    return tpr, fpr, tp, fp
+
+
 def roc_metrics_for_epoch(anos: AnomalyScores):
     num_rec = len(anos.before_exploit_per_recording)
     y_true = [0] * num_rec + [1] * num_rec
     y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()]
     y_score += [max(scores) for scores in anos.after_exploit_per_recording.values()]
 
+    fpr, tpr, thresholds = roc_curve(y_true, y_score)
+    roc_auc = auc(fpr, tpr)
+    return thresholds, tpr, fpr, roc_auc
+
+
+def roc_metrics_for_epoch_with_normal(anos: AnomalyScores):
+    num_rec = len(anos.before_exploit_per_recording)
+    num_norm = len(anos.normal_per_recording)
+    y_true = [0] * num_rec + [1] * num_rec + [0] * num_norm
+    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()] \
+              + [max(scores) for scores in anos.after_exploit_per_recording.values()] \
+              + [max(scores) for scores in anos.normal_per_recording.values()]
+    fpr, tpr, thresholds = roc_curve(y_true, y_score)
+    roc_auc = auc(fpr, tpr)
+    return thresholds, tpr, fpr, roc_auc
+
+
+def roc_metrics_for_epoch_after_and_normal(anos: AnomalyScores):
+    num_rec = len(anos.after_exploit_per_recording)
+    num_norm = len(anos.normal_per_recording)
+    y_true = [1] * num_rec + [0] * num_norm
+    y_score = [max(scores) for scores in anos.after_exploit_per_recording.values()] \
+              + [max(scores) for scores in anos.normal_per_recording.values()]
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
     roc_auc = auc(fpr, tpr)
     return thresholds, tpr, fpr, roc_auc
@@ -405,7 +457,7 @@ def train_ae_model(scenario,
         ), )
 
     model = AE(
-        input_vector=None,
+        input_vector=BuildingBlock(),  # Not needed,use fake
         epochs=epochs,
         dropout=dropout,
         use_early_stopping=False,
@@ -456,7 +508,7 @@ def train_tf_model(scenario,
         ), )
 
     model = Transformer(
-        input_vector=None,
+        input_vector=BuildingBlock(),  # Not needed,use fake
         epochs=epochs,
         anomaly_scoring=AnomalyScore.LOSS,
         batch_size=batch_size,

@@ -24,6 +24,8 @@ class AnomalyScores:
         self.before_exploit_exc_train = anomaly_scores_before_exploit_exc_train
         self.after_exploit_exc_train = anomaly_scores_after_exploit_exc_train
         self.normal_exc_train = anomaly_scores_normal_exc_train
+        self.after_exploit_exc_val = []
+        self.normal_exc_val = []
         self.after_exploit_per_recording = anomaly_scores_after_exploit_per_recording
         self.before_exploit_per_recording = anomaly_scores_before_exploit_per_recording
         self.normal_per_recording = anomaly_scores_normal_per_recording
@@ -32,7 +34,7 @@ class AnomalyScores:
         self.threshold_before_exploit = max(anomaly_scores_before_exploit, default=0)
         self.threshold_after_exploit = max(anomaly_scores_after_exploit)
         self.threshold_normal = max(anomaly_scores_normal)
-        self.threshold_val_exc_train = max(anomaly_scores_val_exc_train)
+        self.threshold_val_exc_train = max(anomaly_scores_val_exc_train, default=0)
         self.has_detected = self.threshold < self.threshold_after_exploit
         self.true_anomal_ngs_count = 0
         self.detected = [score > self.threshold for score in anomaly_scores_after_exploit]

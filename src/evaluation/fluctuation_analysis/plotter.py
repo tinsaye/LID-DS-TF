@@ -1,3 +1,4 @@
+""" Plotting utility functions """
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
