@@ -127,3 +127,18 @@ class ModelCheckPoint:
             } | kwargs,
             epoch_path
         )
+
+    def load_epoch(self, epoch) -> dict:
+        """ Load the  checkpoint for specified epoch
+
+        Args:
+            epoch (int): epoch to load
+
+        Returns:
+            dict: checkpoint
+        """
+        epoch_path = os.path.join(self.epochs_dir, f"epochs{epoch}.model")
+        return torch.load(
+            epoch_path,
+            map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        )
