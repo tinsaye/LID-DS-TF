@@ -83,7 +83,7 @@ def start_job(job_str):
 
 # start jobs for specific configuration
 if not EVALUATE:
-    SCRIPT = 'run_ae_on_sc_cpu.sh'
+    SCRIPT = 'run_ae_on_cluster_cpu.sh'
     for scenario in SCENARIOS:
         for ngram_length in NGRAM_LENGTHS:
             NUM_EXPERIMENTS += 1
@@ -98,7 +98,7 @@ if not EVALUATE:
 
             start_job(command)
 else:
-    SCRIPT = 'run_ae_on_sc.sh'
+    SCRIPT = 'run_ae_on_cluster.sh'
     for scenario in SCENARIOS:
         for dropout in DROPOUTS:
             for custom_split in custom_splits:

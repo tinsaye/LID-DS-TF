@@ -13,11 +13,8 @@ module load matplotlib/3.4.3-foss-2021b
 module load CUDA/11.3.1
 module load Python/3.9.6-GCCcore-11.2.0
 module load SciPy-bundle/2021.10-foss-2021b
-
-pip install --upgrade pip
-pip install --user -e .
-pip install --user torch --extra-index-url https://download.pytorch.org/whl/cu116
-pip install --user -r "$(grep -ivE 'torch' ../requirements.txt)"
+module load PyTorch/1.10.0-foss-2021a-CUDA-11.3.1
+module load tensorboard/2.8.0-foss-2021a
 
 # parameters:
 # 1: -d base_path

@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=40GB
 #SBATCH --mail-type=FAIL
-#SBATCH -o /work/users/ta651pyga/final/logs/ae/job_train_%A_%a.log
+#SBATCH -o /work/users/$USER/final/logs/tf/job_eval_%A_%a.log
 
 export IDS_ON_CLUSTER=1
 
@@ -15,15 +15,7 @@ module load SciPy-bundle/2021.10-foss-2021b
 module load PyTorch/1.10.0-foss-2021a-CUDA-11.3.1
 module load tensorboard/2.8.0-foss-2021a
 
-#pip install --upgrade pip
-#python -c "import algorithms"
-#module_missing=$?
-#if [ $module_missing -ne 0 ]; then
-#  pip install --user -e ../
-#fi
-#pip install --user -r "$(grep -ivE 'torch' ../requirements.txt)"
-
-export PYTHONPATH="/home/sc.uni-leipzig.de/ta651pyga/lidds_wt/thesis/LID-DS:$PYTHONPATH"
+export PYTHONPATH="$HOME/lidds_wt/thesis/LID-DS:$PYTHONPATH"
 
 # parameters:
 # 1: -bp base_path

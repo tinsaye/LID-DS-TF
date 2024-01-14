@@ -59,7 +59,7 @@ if '2019' in BASE_PATH:
     SCENARIOS = scenario_2019
 else:
     SCENARIOS = scenario_2021
-SCRIPT = 'run_tf_on_sc_cpu.sh'
+SCRIPT = 'run_tf_on_cluster_cpu.sh'
 
 MAX_JOBS_IN_QUEUE = 600
 NUM_EXPERIMENTS = 0
@@ -98,7 +98,7 @@ for run in range(REPEAT):
                     for anomaly_score in ANOMALY_SCORINGS:
                         ff_dim = model_dim * 4  # for now use recommended dimensions
                         if EVAL:
-                            SCRIPT = 'run_tf_on_sc_cpu.sh'
+                            SCRIPT = 'run_tf_on_cluster_cpu.sh'
                             for epochs in reversed(range(60, 901, 60)):
                                 NUM_EXPERIMENTS += 1
                                 command = f"sbatch --job-name=ex_{NUM_EXPERIMENTS:05}{scenario}m{model_dim}l{layers}f{ff_dim}h{num_heads}lm{language_model}n{ngram_length}ret{USE_RET_VALUE}e{epochs} " + \
@@ -126,7 +126,7 @@ for run in range(REPEAT):
 
                                 start_job(command)
                         else:
-                            SCRIPT = 'run_tf_on_sc.sh'
+                            SCRIPT = 'run_tf_on_cluster.sh'
                             NUM_EXPERIMENTS += 1
                             command = f"sbatch --job-name=ex_{NUM_EXPERIMENTS:05}{scenario}m{model_dim}l{layers}f{ff_dim}h{num_heads}lm{language_model}n{ngram_length}ret{USE_RET_VALUE} " + \
                                       f"{SCRIPT} " + \
