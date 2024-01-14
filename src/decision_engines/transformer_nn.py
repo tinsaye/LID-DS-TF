@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from torch.nn.init import xavier_uniform_
 
 
-class CustomTransformer(Module):
+class TransformerModel(Module):
     r"""A transformer model. User is able to modify the attributes as needed. The architecture
     is based on the paper "Attention Is All You Need". Ashish Vaswani, Noam Shazeer,
     Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Lukasz Kaiser, and
@@ -31,7 +31,7 @@ class CustomTransformer(Module):
             as (batch, seq, feature). Default: ``False`` (seq, batch, feature).
 
     Examples::
-        >>> transformer_model = CustomTransformer(nhead=16, num_encoder_layers=12)
+        >>> transformer_model = TransformerModel(nhead=16, num_encoder_layers=12)
         >>> src = torch.rand((10, 32, 512))
         >>> tgt = torch.rand((20, 32, 512))
         >>> out = transformer_model(src, tgt)
@@ -42,7 +42,7 @@ class CustomTransformer(Module):
                  activation: str = "relu", layer_norm_eps: float = 1e-5, pre_layer_norm: bool = False,
                  batch_first: bool = False, device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
-        super(CustomTransformer, self).__init__()
+        super(TransformerModel, self).__init__()
         self._pre_layer_norm = pre_layer_norm
 
         encoder_layer = TransformerEncoderLayer(
@@ -101,7 +101,7 @@ class CustomTransformer(Module):
             batch size, E is the feature number
 
         Examples:
-            >>> transformer_model = CustomTransformer(nhead=16, num_encoder_layers=12)
+            >>> transformer_model = TransformerModel(nhead=16, num_encoder_layers=12)
             >>> out = transformer_model(src, src_mask=src_mask)
         """
         output = self.encoder(src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)

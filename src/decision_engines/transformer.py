@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from decision_engines.transformer_nn import CustomTransformer
+from decision_engines.transformer_nn import TransformerModel
 from src.features.int_embedding import IntEmbeddingConcat
 from utils.checkpoint import ModelCheckPoint
 
@@ -40,24 +40,23 @@ class Transformer(BuildingBlock):
     """ Decision engine based on the Transformer architecture."""
     VERSION = "00.20"
 
-    def __init__(
-            self,
-            input_vector: BuildingBlock,
-            int_embedding: IntEmbeddingConcat,
-            epochs: int,
-            batch_size: int,
-            anomaly_scoring: AnomalyScore,
-            checkpoint: ModelCheckPoint,
-            num_heads: int,
-            layers: int,
-            model_dim: int,
-            dropout: float,
-            feedforward_dim: int,
-            pre_layer_norm: bool,
-            dedup_train_set: bool,
-            learning_rate: float,
-            retrain=False,
-            log_grads=False):
+    def __init__(self,
+                 input_vector: BuildingBlock,
+                 int_embedding: IntEmbeddingConcat,
+                 epochs: int,
+                 batch_size: int,
+                 anomaly_scoring: AnomalyScore,
+                 checkpoint: ModelCheckPoint,
+                 num_heads: int,
+                 layers: int,
+                 model_dim: int,
+                 dropout: float,
+                 feedforward_dim: int,
+                 pre_layer_norm: bool,
+                 dedup_train_set: bool,
+                 learning_rate: float,
+                 retrain=False,
+                 log_grads=False):
         super().__init__()
         self._input_vector = input_vector
         self._int_embedding = int_embedding
@@ -95,15 +94,14 @@ class Transformer(BuildingBlock):
         num_tokens = len(self._int_embedding)
         self.update_config_value("distinct_tokens", num_tokens)
         self._distinct_tokens = num_tokens
-        self.transformer = TransformerModel(
+        self.transformer = TransformerLM(
             num_tokens,
             self._model_dim,
             self._num_heads,
             self._layers,
             self._dropout,
             self._feedforward_dim,
-            pre_layer_norm=self._pre_layer_norm,
-        ).to(self._device)
+            pre_layer_norm=self._pre_layer_norm, ).to(self._device)
 
         n_params = sum(p.numel() for p in self.transformer.parameters())
         print("Transformer: number of parameters: %.2fT" % (n_params / 1e3,))
@@ -123,22 +121,15 @@ class Transformer(BuildingBlock):
         self._init_model()
 
         self._optimizer = torch.optim.Adam(
-            self.transformer.parameters(),
-            lr=self._learning_rate,
-            betas=(0.9, 0.98),
-            eps=1e-9
+            self.transformer.parameters(), lr=self._learning_rate, betas=(0.9, 0.98), eps=1e-9
         )
 
         t_dataset = TransformerDataset(
-            self._training_set,
-            self._dedup_train_set,
-            self._device
+            self._training_set, self._dedup_train_set, self._device
         )
         self.train_set_size = len(t_dataset)
         t_dataset_val = TransformerDataset(
-            self._validation_set,
-            self._dedup_train_set,
-            self._device
+            self._validation_set, self._dedup_train_set, self._device
         )
         self.val_set_size = len(t_dataset_val)
 
@@ -146,9 +137,7 @@ class Transformer(BuildingBlock):
         val_dataloader = DataLoader(t_dataset_val, batch_size=self._batch_size, shuffle=True)
 
         last_epoch, self.train_losses, self.val_losses, _ = self._checkpoint.load(
-            self.transformer,
-            self._optimizer,
-            self._epochs
+            self.transformer, self._optimizer, self._epochs
         )
 
         for epoch in tqdm(range(last_epoch + 1, self._epochs + 1), "train&val".rjust(27), unit=" epoch"):
@@ -237,9 +226,7 @@ class Transformer(BuildingBlock):
 
     def load_epoch(self, epoch):
         last_epoch, self.train_losses, self.val_losses, checkpoint = self._checkpoint.load(
-            self.transformer,
-            self._optimizer,
-            epoch
+            self.transformer, self._optimizer, epoch
         )
         if checkpoint:
             self._anomaly_scores = checkpoint.get("anomaly_scores", self._anomaly_scores)
@@ -263,9 +250,7 @@ class Transformer(BuildingBlock):
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.transformer.to(self._device)
         input_dataset = TransformerDataset(
-            input_vectors,
-            dedup_train_set=False,
-            device=self._device
+            input_vectors, dedup_train_set=False, device=self._device
         )
         input_loader = DataLoader(input_dataset, batch_size=batch_size, shuffle=False)
         results = []
@@ -315,21 +300,10 @@ class TransformerDataset(Dataset):
         return self.X[index], self.Y[index]
 
 
-class TransformerModel(nn.Module):
-    """
-    Model from "A detailed guide to Pytorch's nn.Transformer() module.", by
-    Daniel Melchor: https://medium.com/@danielmelchor/a-detailed-guide-to-pytorchs-nn-transformer-module-c80afbc9ffb1
-    """
+class TransformerLM(nn.Module):
+    """ A transformer based decoder only language model. """
 
-    def __init__(
-            self,
-            num_tokens,
-            dim_model,
-            num_heads,
-            num_encoder_layers,
-            dropout,
-            feedforward_dim,
-            pre_layer_norm):
+    def __init__(self, num_tokens, dim_model, num_heads, num_encoder_layers, dropout, feedforward_dim, pre_layer_norm):
         super().__init__()
 
         # INFO
@@ -340,41 +314,42 @@ class TransformerModel(nn.Module):
         self.positional_encoder = PositionalEncoding(dim_model=dim_model, dropout_p=dropout, max_len=5000)
         self.embedding = nn.Embedding(num_tokens, dim_model)
 
-        self.transformer = CustomTransformer(
+        self.transformer = TransformerModel(
             d_model=dim_model,
             nhead=num_heads,
             num_encoder_layers=num_encoder_layers,
             dropout=dropout,
             dim_feedforward=feedforward_dim,
-            pre_layer_norm=pre_layer_norm,
-        )
+            pre_layer_norm=pre_layer_norm, )
 
         self.out = nn.Linear(dim_model, num_tokens)
 
     def forward(self, src, src_mask=None, src_pad_mask=None):
-        # Src size must be (batch_size, src sequence length)
+        # src size must be (batch_size, src sequence length)
 
-        # Embedding + positional encoding - Out size = (batch_size, sequence length, dim_model)
+        # embedding + positional encoding - out size = (batch_size, sequence length, dim_model)
         src = self.embedding(src) * math.sqrt(self.dim_model)
         src = self.positional_encoder(src)
 
-        # We could use the parameter batch_first=True, but our KDL version doesn't support it yet, so we permute
+        # TODO: We could use the parameter batch_first=True, but our KDL version doesn't support it yet, so we permute
         # to obtain size (sequence length, batch_size, dim_model),
         src = src.permute(1, 0, 2)
 
         # Transformer blocks - Out size = (sequence length, batch_size, num_tokens)
         transformer_out = self.transformer(
-            src,
-            src_mask=src_mask,
-            src_key_padding_mask=src_pad_mask,
-        )
+            src, src_mask=src_mask, src_key_padding_mask=src_pad_mask, )
         out = self.out(transformer_out)
 
         return out
 
     @staticmethod
     def get_mask(size) -> torch.tensor:
-        # Generates a square matrix where each row allows one word more to be seen
+        """
+            Generates a square matrix where each row allows one word more to be seen
+
+        Args:
+            size (int): matrix dimension
+        """
         mask = torch.tril(torch.ones(size, size) == 1)  # Lower triangular matrix
         mask = mask.float()
         mask = mask.masked_fill(mask == 0, float('-inf'))  # Convert zeros to -inf
@@ -388,12 +363,6 @@ class TransformerModel(nn.Module):
         #  [0.,   0.,   0.,   0.,   0.]]
 
         return mask
-
-    @staticmethod
-    def create_pad_mask(matrix: torch.tensor, pad_token: int) -> torch.tensor:
-        # If matrix = [1,2,3,0,0,0] where pad_token=0, the result mask is
-        # [False, False, False, True, True, True]
-        return matrix == pad_token
 
 
 class PositionalEncoding(nn.Module):
