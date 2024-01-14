@@ -1,4 +1,5 @@
 class Ngs:
+    """ Ngram sets """
     def __init__(self):
         self.train_set = []
         self.val_set = []

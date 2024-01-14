@@ -24,6 +24,19 @@ from utils.checkpoint import ModelCheckPoint
 
 
 def collect_ngrams(ngram_bb: Ngram, scenario_path, direction: Direction, **kwargs) -> NgramsCollector:
+    """
+        Simulates the evaluation pipeline and collects the n-grams with a fake BuildingBlock.
+        The collected n-grams can be cached for later use.
+        This allows us to save a considerable amount of time when running the analysis
+    Args:
+        ngram_bb: the ngram building block
+        scenario_path: path to the specific scenario of a dataset
+        direction: system calls direction
+        **kwargs: keywords arguments passed to the dataloader factory, necessary for ADFA dataset
+
+    Returns:
+        An instance of the NgramCollector
+    """
     collector = NgramsCollector(ngram_bb)
 
     dataloader: BaseDataLoader = dataloader_factory(scenario_path, direction, **kwargs)
@@ -49,6 +62,14 @@ def collect_ngrams(ngram_bb: Ngram, scenario_path, direction: Direction, **kwarg
 
 
 def ngram_sets(collector: NgramsCollector) -> Ngs:
+    """
+        Converts results from the NgramCollector to ngram sets
+    Args:
+        collector: the ngram collector
+
+    Returns:
+        An instance of Ngs containing the ngrams sets
+    """
     train_set = list(collector.train_set_counts.keys())
     val_set = list(collector.val_set_counts.keys())
     exploit_set = list(collector.exploit_set_counts.keys())
@@ -109,6 +130,16 @@ def ngram_sets(collector: NgramsCollector) -> Ngs:
 
 
 def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
+    """
+       Trains the model (if necessary) or retrieves cached results and calculates anomaly scores for a given epoch
+    Args:
+        model: model building block
+        epoch: number of epochs to train
+        NGS: ngrams sets
+
+    Returns:
+        Instance of AnomalyScores
+    """
     model._epochs = epoch
     model.load_epoch(epoch)
 
@@ -180,32 +211,18 @@ def anomaly_scores_for_epoch(model, epoch, NGS: Ngs) -> AnomalyScores:
     return anomaly_scores
 
 
-def roc_metrics_for_threshold(anos: AnomalyScores):
-    fp, tp = fp_tp_for_threshold(anos)
-
-    num_rec = len(anos.after_exploit_per_recording)
-    tn = num_rec - fp
-    fn = num_rec - tp
-
-    tpr = tp / (tp + fn)
-    fpr = fp / (fp + tn)
-    return tpr, fpr
-
-
-def fp_tp_for_threshold(anos: AnomalyScores):
-    threshold = anos.threshold
-    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores])
-                                       for _scores in anos.before_exploit_per_recording.values()]
-    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores])
-                                      for _scores in anos.after_exploit_per_recording.values()]
-
-    fp = sum(is_anomaly_before_per_recording)
-    tp = sum(is_anomaly_after_per_recording)
-
-    return fp, tp
-
-
 def roc_metrics_for_threshold_with_normal(anos: AnomalyScores):
+    """
+        Determines true positive rate and false positive rate based on anomaly scores
+        Uses the threshold determined by the model.
+        Includes the anomaly scores from the normal sets ngrams
+    Args:
+        anos: anomaly scores
+
+    Returns:
+        the true positive rate and false positive rate
+
+    """
     threshold = anos.threshold
     num_rec = len(anos.after_exploit_per_recording)
     num_norm = len(anos.normal_per_recording)
@@ -227,54 +244,48 @@ def roc_metrics_for_threshold_with_normal(anos: AnomalyScores):
     return tpr, fpr, tp, fp
 
 
-def roc_metrics_for_epoch(anos: AnomalyScores):
-    num_rec = len(anos.before_exploit_per_recording)
-    y_true = [0] * num_rec + [1] * num_rec
-    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()]
-    y_score += [max(scores) for scores in anos.after_exploit_per_recording.values()]
+def fp_tp_for_threshold(anos: AnomalyScores) -> tuple[int, int]:
+    """
+        Determines the number of true positives and false positives based on the given anomaly scores
+    Args:
+        anos: anomaly scores
 
-    fpr, tpr, thresholds = roc_curve(y_true, y_score)
-    roc_auc = auc(fpr, tpr)
-    return thresholds, tpr, fpr, roc_auc
+    Returns:
+        Number of false positives and true positives
+    """
+    threshold = anos.threshold
+    is_anomaly_before_per_recording = [any([sc > threshold for sc in _scores])
+                                       for _scores in anos.before_exploit_per_recording.values()]
+    is_anomaly_after_per_recording = [any([sc > threshold for sc in _scores])
+                                      for _scores in anos.after_exploit_per_recording.values()]
+
+    fp = sum(is_anomaly_before_per_recording)
+    tp = sum(is_anomaly_after_per_recording)
+
+    return fp, tp
 
 
-def roc_metrics_for_epoch_with_normal(anos: AnomalyScores):
+def aoc_metrics_for_epoch_with_normal(anos: AnomalyScores):
+    """
+        Determines true positive rates and false positive rates based on anomaly scores
+        Uses different thresholds
+        Includes the anomaly scores from the normal sets ngrams
+    Args:
+        anos: anomaly scores
+
+    Returns:
+        the true positive rate and false positive rate
+
+    """
     num_rec = len(anos.before_exploit_per_recording)
     num_norm = len(anos.normal_per_recording)
     y_true = [0] * num_rec + [1] * num_rec + [0] * num_norm
-    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()] \
-              + [max(scores) for scores in anos.after_exploit_per_recording.values()] \
-              + [max(scores) for scores in anos.normal_per_recording.values()]
+    y_score = [max(scores) for scores in anos.before_exploit_per_recording.values()]
+    y_score += [max(scores) for scores in anos.after_exploit_per_recording.values()]
+    y_score += [max(scores) for scores in anos.normal_per_recording.values()]
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
     roc_auc = auc(fpr, tpr)
     return thresholds, tpr, fpr, roc_auc
-
-
-def roc_metrics_for_epoch_after_and_normal(anos: AnomalyScores):
-    num_rec = len(anos.after_exploit_per_recording)
-    num_norm = len(anos.normal_per_recording)
-    y_true = [1] * num_rec + [0] * num_norm
-    y_score = [max(scores) for scores in anos.after_exploit_per_recording.values()] \
-              + [max(scores) for scores in anos.normal_per_recording.values()]
-    fpr, tpr, thresholds = roc_curve(y_true, y_score)
-    roc_auc = auc(fpr, tpr)
-    return thresholds, tpr, fpr, roc_auc
-
-
-def anomalies_counts(anos: AnomalyScores, NGS: Ngs):
-    is_anomaly = lambda score: score > anos.threshold
-
-    before_exploit = [is_anomaly(score) for score in anos.before_exploit]
-    after_exploit = [is_anomaly(score) for score in anos.after_exploit]
-    normal = [is_anomaly(score) for score in anos.normal]
-
-    anomal_ngs_after_exploit = [ng for ng, is_anormal in zip(NGS.after_exploit_set, after_exploit) if is_anormal]
-    return dict(
-        before_exploit=sum(before_exploit),
-        after_exploit=sum(after_exploit),
-        normal=sum(normal),
-        anomal_ngs_after_exploit=anomal_ngs_after_exploit
-    )
 
 
 def get_anomaly_scores_for_epochs(_model, epochs, _NGS, _collector, config: Iterable[int], base_path=""):
@@ -291,11 +302,6 @@ def get_anomaly_scores_for_epochs(_model, epochs, _NGS, _collector, config: Iter
 
     for epoch in tqdm(epochs):
         anos: AnomalyScores = anomaly_scores_for_epoch(_model, epoch, _NGS)
-        anos.true_anomal_ngs_count = 0
-        if anos.has_detected:
-            counts = anomalies_counts(anos, _NGS)
-            for ng in counts["anomal_ngs_after_exploit"]:
-                anos.true_anomal_ngs_count += _collector.after_exploit_set_counts[ng]
         anos_per_epoch[epoch] = anos
 
     with open(cache_path, "wb") as f:
@@ -354,6 +360,21 @@ def prepare_tf_ngs(dataset_base,
                    dataset: str,
                    scenario: str,
                    base_path="") -> NgramsCollector:
+    """
+        Prepares the ngrams for the transformer model evaluation
+        Caches the ngrams to disc
+    Args:
+        dataset_base: base directory for the dataset
+        ngram_length: ngram length
+        direction: system call direction
+        dataset: dataset name
+        scenario: dataset scenario
+        base_path: base path where the results (cached ngrams) should be stored
+
+    Returns:
+        An NgramCollector instance
+
+    """
     path = f"ngrams/tf_{dataset}_{scenario}_{ngram_length}_{direction}.pickle"
     path = os.path.join(base_path, path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -388,6 +409,21 @@ def prepare_ae_ngs(dataset_base,
                    dataset: str,
                    scenario: str,
                    base_path="") -> NgramsCollector:
+    """
+        Prepares the ngrams for the autoencoder model evaluation
+        Caches the ngrams to disc
+    Args:
+        dataset_base: base directory for the dataset
+        ngram_length: ngram length
+        direction: system call direction
+        dataset: dataset name
+        scenario: dataset scenario
+        base_path: base path where the results (cached ngrams) should be stored
+
+    Returns:
+        An NgramCollector instance
+
+    """
     path = f"ngrams/ae_{dataset}_{scenario}_{ngram_length}_{direction}.pickle"
     path = os.path.join(base_path, path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -422,17 +458,6 @@ def prepare_ae_ngs(dataset_base,
     return collector
 
 
-def convert_list_of_ng_enc_to_syscalls(list_of_enc_ngs, ng_to_enc, syscall_dict, ngram_length):
-    result = []
-    for ngs in list_of_enc_ngs:
-        split_len = len(ngs) // ngram_length
-        ngs_split = [ngs[i:i + split_len] for i in range(0, len(ngs), split_len)]
-        ng_split_ohe = [ng_to_enc[ng] for ng in ngs_split]
-        ng_split_syscall_name = [syscall_dict[ng] for ng in ng_split_ohe]
-        result.append(ng_split_syscall_name)
-    return result
-
-
 def train_ae_model(scenario,
                    dataset,
                    ngram_length,
@@ -443,6 +468,7 @@ def train_ae_model(scenario,
                    NGS: Ngs,
                    epochs=3000,
                    base_path=""):
+    """ Train the autoencoder"""
     checkpoint = ModelCheckPoint(
         scenario_name=scenario,
         models_dir=os.path.join(base_path, "models"),
@@ -457,7 +483,7 @@ def train_ae_model(scenario,
         ), )
 
     model = AE(
-        input_vector=BuildingBlock(),  # Not needed,use fake
+        input_vector=BuildingBlock(),  # Not needed, use fake
         epochs=epochs,
         dropout=dropout,
         use_early_stopping=False,
@@ -490,6 +516,7 @@ def train_tf_model(scenario,
                    num_heads=2,
                    layers=2,
                    base_path=""):
+    """ Train the transformer model """
     checkpoint = ModelCheckPoint(
         scenario_name=scenario,
         models_dir=os.path.join(base_path, "models"),
@@ -508,7 +535,7 @@ def train_tf_model(scenario,
         ), )
 
     model = Transformer(
-        input_vector=BuildingBlock(),  # Not needed,use fake
+        input_vector=BuildingBlock(),  # Not needed, use fake
         epochs=epochs,
         anomaly_scoring=AnomalyScore.LOSS,
         batch_size=batch_size,

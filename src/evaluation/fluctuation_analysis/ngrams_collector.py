@@ -2,6 +2,10 @@ from algorithms.building_block import BuildingBlock
 
 
 class NgramsCollector(BuildingBlock):
+    """
+    A fake building block that collects the ngrams from the training, validation and tests set
+    Adds methods for ngrams before an exploit starts and after the exploit
+    """
 
     def __init__(self, input_vector: BuildingBlock):
         super().__init__()

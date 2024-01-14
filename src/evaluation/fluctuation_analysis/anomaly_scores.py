@@ -1,4 +1,5 @@
 class AnomalyScores:
+    """ Container for anomaly scores of different ngram sets for a specific epochs """
     def __init__(self,
                  epoch,
                  anomaly_scores_train,
