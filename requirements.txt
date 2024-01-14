@@ -7,3 +7,4 @@ scikit-learn==1.0.2
 tabulate==0.8.10
 sentencepiece~=0.1.97
 tensorboard~=2.13.0
+proplot~=0.9.7
