@@ -35,7 +35,7 @@ class CachedTF(BuildingBlock):
         self._anomaly_scores = anomaly_scores
         self.threshold = threshold
         self._decider = decider
-        self.__config["anomaly_scores"] = ""
+        self._BuildingBlock__config["anomaly_scores"] = ""
 
     def _calculate(self, syscall: Syscall) -> bool:
         input_vector = self._input_vector.get_result(syscall)

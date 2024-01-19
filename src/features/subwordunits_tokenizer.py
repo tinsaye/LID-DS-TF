@@ -134,4 +134,4 @@ class SubWordUnitsTokenizer(BuildingBlock):
         """
             Updates the value of a config key. Useful when the value is not known at init time.
         """
-        self.__config[key] = value
+        self._BuildingBlock__config[key] = value

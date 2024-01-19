@@ -175,6 +175,9 @@ class AE(BuildingBlock):
         self.use_cache = False
         self.eval_after_load = False
 
+        # FIX: BuildingBlock to json conversion can not handle checkpoint class, but it should be ignored anyway
+        self.update_config_value("checkpoint", None)
+
     def depends_on(self):
         return self._dependency_list
 
@@ -457,4 +460,4 @@ class AE(BuildingBlock):
         """
             Updates the value of a config key. Useful when the value is not known at init time.
         """
-        self.__config[key] = value
+        self._BuildingBlock__config[key] = value

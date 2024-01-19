@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from decision_engines.transformer_nn import TransformerModel
-from src.features.int_embedding import IntEmbeddingConcat
+from features.int_embedding import IntEmbeddingConcat
 from utils.checkpoint import ModelCheckPoint
 
 
@@ -89,6 +89,9 @@ class Transformer(BuildingBlock):
 
         self._writer = SummaryWriter(log_dir=checkpoint.epochs_dir + "/tensorboard")
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # FIX: BuildingBlock to json conversion can not handle checkpoint class, but it should be ignored anyway
+        self.update_config_value("checkpoint", None)
 
     def _init_model(self):
         num_tokens = len(self._int_embedding)
@@ -281,7 +284,7 @@ class Transformer(BuildingBlock):
         """
             Updates the value of a config key. Useful when the value is not known at init time.
         """
-        self.__config[key] = value
+        self._BuildingBlock__config[key] = value
 
 
 class TransformerDataset(Dataset):
