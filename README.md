@@ -62,10 +62,14 @@ pip install -r requirements.txt
 
 ## Usage
 
-To run the IDS pipeline on the LID-DS dataset for a single scenario with default configurations, use the following command:
+To run the IDS pipeline (2-3 min on my laptop) on the LID-DS dataset for a single example scenario with default configurations, use the following commands:
 ```shell
 cd src
-LID_DS_BASE="/path/to/Datasets/" python ids_transformer_main.py
+mkdir -p dataset/LID-DS-2019/
+wget "https://cloud.scadsai.uni-leipzig.de/index.php/s/HLXiWssriRMt9pp/download?files=CVE-2017-7529.tar.gz" -O CVE-2017-7529.tar.gz \
+  && tar -zxf CVE-2017-7529.tar.gz -C dataset/LID-DS-2019/ \
+  && rm CVE-2017-7529.tar.gz
+LID_DS_BASE="dataset" python ids_transformer_main.py
 ```
 The default configuration can be found in the main function of `ids_transformer_main.py`.
 

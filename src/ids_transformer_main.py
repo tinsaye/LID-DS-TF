@@ -51,7 +51,7 @@ scenario_names = [
 
 
 def main():
-    lid_ds_version_number = 1
+    lid_ds_version_number = 0
     scenario_number = 0
     scenario = scenario_names[scenario_number]
     checkpoint_dir = "Models"
