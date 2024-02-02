@@ -1,5 +1,6 @@
 """
 Modified version of the Autoencoder Building block from LID-DS.
+License of the original source code: GNU General Public License v3.0 https://github.com/LID-DS/LID-DS/blob/master/LICENSE
 Main changes are
     - possibility to train without early stopping
     - model checkpoints to allow caching

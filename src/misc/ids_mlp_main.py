@@ -1,3 +1,9 @@
+"""
+Modified version of the LID-DS implementation.
+License of the original source code: GNU General Public License v3.0 https://github.com/LID-DS/LID-DS/blob/master/LICENSE
+"""
+import os
+
 import os
 import sys
 from datetime import datetime

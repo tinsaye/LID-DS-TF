@@ -1,3 +1,18 @@
+#  LID-DS-TF Copyright (c) 2024. Tinsaye Abye
+#
+#  LID-DS-TF is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  LID-DS-TF is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with LID-DS-TF.  If not, see <https://www.gnu.org/licenses/>.
+
 import math
 from enum import Enum
 from functools import cache
@@ -334,7 +349,6 @@ class TransformerLM(nn.Module):
         src = self.embedding(src) * math.sqrt(self.dim_model)
         src = self.positional_encoder(src)
 
-        # TODO: We could use the parameter batch_first=True, but our KDL version doesn't support it yet, so we permute
         # to obtain size (sequence length, batch_size, dim_model),
         src = src.permute(1, 0, 2)
 

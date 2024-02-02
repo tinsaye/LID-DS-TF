@@ -1,5 +1,6 @@
 """
 Custom Transformer based models implementations.  Modified version of the pytorch `nn.Transformer` module.
+License of the original source code: Copyright (c) 2016- Facebook, Inc (Adam Paszke) https://github.com/pytorch/pytorch/blob/main/LICENSE
 """
 import copy
 from typing import Optional
